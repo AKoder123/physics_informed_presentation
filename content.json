@@ -1,178 +1,152 @@
 {
   "meta": {
-    "deckId": "target-is-ready-senior-delivery-manager",
-    "title": "Target is Ready: Senior Delivery Manager",
-    "theme": "flowpitch-dark"
+    "deckId": "physics-topology-fyp-2026",
+    "title": "Physics-Informed Candidate Ranking for Distribution Grid Topology Reconstruction",
+    "theme": "flowpitch-dark",
+    "presenter": "Advay Kumar",
+    "date": "May 2026"
   },
   "slides": [
     {
       "type": "title",
-      "headline": "Target is Ready",
-      "subheadline": "Senior Delivery Manager narrative for a high-stakes integration workstream",
-      "bullets": [
-        "Readiness, governance, execution discipline",
-        "Prepared for enterprise-scale banking transformation"
-      ],
-      "cta": "Role interview narrative"
-    },
-    {
-      "type": "section",
-      "headline": "The core message",
-      "subheadline": "Successful cutover is earned before the migration window opens.",
-      "bullets": [
-        "No assumptions",
-        "Validated readiness",
-        "Clear accountability",
-        "Fast escalation",
-        "Aligned stakeholders"
-      ],
-      "note": "Use this to frame the rest of the discussion."
-    },
-    {
-      "type": "proof",
-      "headline": "Relevant delivery record",
-      "subheadline": "Experience across complex, one-of-a-kind banking programs.",
+      "eyebrow": "Final Year Project · AI-based model discovery for active distribution networks",
+      "headline": "Physics-Informed Candidate Ranking for Distribution Grid Topology Reconstruction",
+      "subheadline": "Reconstructing low-voltage radial network topology from smart-meter voltage and current measurements.",
       "cards": [
-        {
-          "title": "Data Centre Expansion",
-          "body": "Large-scale technology migration requiring precision and coordination."
-        },
-        {
-          "title": "ANZ Wealth Sale",
-          "body": "Multi-stakeholder transformation with significant operational dependencies."
-        },
-        {
-          "title": "Suncorp Day 1",
-          "body": "Successful execution under high pressure and tight governance."
-        }
+        { "title": "Aim", "body": "Reconstruct low-voltage radial network topology." },
+        { "title": "Input data", "body": "Smart-meter voltage and current measurements." },
+        { "title": "Approach", "body": "Learned candidate ranking with physics-informed features." }
       ],
-      "cta": "Proven in high-stakes environments"
+      "cta": "Advay Kumar · May 2026",
+      "note": "Open by defining the project in one sentence: the model ranks complete candidate topologies, rather than predicting edges independently."
     },
     {
       "type": "cards",
-      "headline": "Three success factors for Big Bang execution",
-      "subheadline": "The workstream succeeds when readiness becomes measurable and operational.",
+      "eyebrow": "Problem and motivation",
+      "headline": "Low-voltage networks are becoming harder to monitor accurately.",
+      "subheadline": "More dynamic behaviour means topology records can become incomplete, outdated, or uncertain.",
       "cards": [
-        {
-          "title": "Absolute readiness clarity",
-          "body": "Validate operational, technical, and workforce criteria before cutover."
-        },
-        {
-          "title": "Disciplined execution",
-          "body": "Runbooks, ownership, command centre oversight, and controlled delivery."
-        },
-        {
-          "title": "Proactive risk management",
-          "body": "Identify dependencies early and escalate issues decisively."
-        }
-      ]
+        { "title": "Network change", "body": "Rooftop solar, EVs, flexible loads, and changing demand patterns make LV networks less predictable." },
+        { "title": "Why topology matters", "body": "Accurate topology supports state estimation, monitoring, planning, and control." },
+        { "title": "Practical issue", "body": "Existing LV topology records may not reflect the true current network state." },
+        { "title": "Opportunity", "body": "Smart-meter data can reveal structure through measured electrical behaviour." }
+      ],
+      "note": "Frame this as a real network visibility problem, not just a machine learning exercise."
     },
     {
       "type": "beforeAfter",
-      "headline": "The difference between activity and readiness",
-      "subheadline": "The role is about proving the organisation is genuinely prepared.",
+      "eyebrow": "Research gap",
+      "headline": "The gap is not only topology inference, but how complete candidates are selected.",
+      "subheadline": "Most existing approaches focus on correlations, graphical learning, optimisation, or direct edge prediction.",
       "left": {
-        "title": "Activity focus",
+        "title": "Common existing focus",
         "bullets": [
-          "Plans exist",
-          "Meetings occur",
-          "Reports are produced",
-          "Risks are listed"
+          "Voltage correlations",
+          "Graphical learning",
+          "Optimisation methods",
+          "Direct edge prediction"
         ]
       },
       "right": {
-        "title": "Outcome focus",
+        "title": "Limited existing focus",
         "bullets": [
-          "Readiness is validated",
-          "Owners are accountable",
-          "Executives can decide",
-          "Risks are resolved"
+          "Ranking complete candidate topologies",
+          "Combining voltage and current measurements",
+          "Using physics-informed candidate features",
+          "Selecting electrically plausible structures"
         ]
-      }
+      },
+      "cta": "Research gap: physics-informed candidate ranking for LV topology reconstruction.",
+      "note": "This is the core novelty slide. Keep it crisp."
     },
     {
       "type": "process",
-      "headline": "How I would operate as 2IC",
-      "subheadline": "Translate strategy into controlled delivery momentum.",
-      "cards": [
-        {
-          "title": "1. Align",
-          "body": "Clarify priorities, decision rights, milestones, and escalation paths."
-        },
-        {
-          "title": "2. Orchestrate",
-          "body": "Coordinate stakeholders across ANZ, Suncorp Bank, vendors, and partners."
-        },
-        {
-          "title": "3. Govern",
-          "body": "Maintain risk visibility, dependency control, and executive-ready reporting."
-        },
-        {
-          "title": "4. Execute",
-          "body": "Drive readiness closure through runbooks, ownership, and hypercare planning."
-        }
-      ]
-    },
-    {
-      "type": "content",
-      "headline": "Knowledge I bring",
-      "subheadline": "A strong base in regulated transformation and integration delivery.",
-      "bullets": [
-        "Large-scale banking transformation",
-        "Operational and technology readiness",
-        "Program governance and risk management",
-        "Cutover planning and hypercare",
-        "Core platform transition impacts"
-      ]
-    },
-    {
-      "type": "content",
-      "headline": "Skills I bring",
-      "subheadline": "Leadership habits suited to a complex readiness workstream.",
-      "bullets": [
-        "Acting as trusted 2IC",
-        "Translating strategy into delivery plans",
-        "Influencing executives and vendors",
-        "Managing risks, issues, and dependencies",
-        "Preparing decision-ready executive material",
-        "Aligning capacity and workforce models"
-      ]
+      "eyebrow": "Proposed approach",
+      "headline": "The model scores full radial topology candidates and selects the best one.",
+      "subheadline": "The key idea is to rank entire candidate networks instead of predicting edges independently.",
+      "steps": [
+        { "title": "Generate candidates", "body": "Create multiple possible radial topology alternatives." },
+        { "title": "Extract features", "body": "Use node, source, candidate, and physics-informed features." },
+        { "title": "Score candidates", "body": "Apply a learned ranking model to each topology." },
+        { "title": "Select prediction", "body": "Choose the highest-ranked candidate topology." }
+      ],
+      "note": "Explain that candidates are complete possible networks, not individual edge guesses."
     },
     {
       "type": "cards",
-      "headline": "Development areas and support needed",
-      "subheadline": "Where I would ramp up quickly to maximise impact.",
+      "eyebrow": "Model inputs",
+      "headline": "The ranker combines measurement, source, and topology-level information.",
+      "subheadline": "Candidate-based features are computed from each proposed topology, not from the unknown real topology.",
       "cards": [
-        {
-          "title": "Program specifics",
-          "body": "Deepen understanding of Target is Ready design and integration points."
-        },
-        {
-          "title": "Delivery rhythm",
-          "body": "Align early to tools, reporting templates, forums, and cadence."
-        },
-        {
-          "title": "Leadership alignment",
-          "body": "Establish clear priorities with the Value Stream Lead."
-        },
-        {
-          "title": "Stakeholder access",
-          "body": "Build relationships across critical cross-stream dependencies."
-        }
-      ]
+        { "title": "Node features", "body": "Voltage statistics, real and imaginary current statistics, current magnitude statistics, and observed-node flags." },
+        { "title": "Source features", "body": "Transformer or source voltage behaviour and source-level measurement statistics." },
+        { "title": "Candidate features", "body": "Degree statistics, observed-edge ratios, signal-based scores, and radial structure information." }
+      ],
+      "note": "Stress that the real topology is not used as an input at inference time."
+    },
+    {
+      "type": "process",
+      "eyebrow": "Model structure and training",
+      "headline": "Separate encoders learn representations, then output one score per candidate.",
+      "subheadline": "Training teaches the model to rank the true topology above generated alternatives.",
+      "steps": [
+        { "title": "Encode inputs", "body": "Separate encoders process node, source, and candidate topology features." },
+        { "title": "Combine signals", "body": "Encoded representations are fused into a shared candidate representation." },
+        { "title": "Score topology", "body": "The model outputs one scalar score for each candidate." },
+        { "title": "Learn ranking", "body": "True topology is positive; generated alternatives are negative." }
+      ],
+      "cards": [
+        { "title": "Objective", "body": "Learn to rank the true topology higher than incorrect candidates." },
+        { "title": "Optimisation", "body": "Ranking/classification-style loss with Adam-style gradient optimisation." }
+      ],
+      "note": "For ML questions: mention scalar score, positive/negative candidates, and ranking objective."
+    },
+    {
+      "type": "proof",
+      "eyebrow": "Test results on unseen samples",
+      "headline": "The model strongly narrows the candidate set on previously unseen examples.",
+      "subheadline": "Evaluation used 108 test examples that were not used during training.",
+      "metrics": [
+        { "value": "66.7%", "label": "Top-1 accuracy" },
+        { "value": "66.7%", "label": "Exact topology accuracy" },
+        { "value": "98.1%", "label": "Top-3 accuracy" },
+        { "value": "100%", "label": "Top-5 accuracy" },
+        { "value": "0.823", "label": "Mean reciprocal rank" },
+        { "value": "0.977", "label": "Mean selected edge F1" }
+      ],
+      "bullets": [
+        "Model often identifies the exact topology.",
+        "True topology is usually ranked very highly.",
+        "Top-3 result shows effective candidate narrowing."
+      ],
+      "note": "This is the proof slide. Avoid calling it validation; these are unseen test samples."
+    },
+    {
+      "type": "cards",
+      "eyebrow": "Physics-informed extension",
+      "headline": "Predictions should be statistically likely and electrically plausible.",
+      "subheadline": "Physics-informed checks aim to improve robustness when candidates are realistic and difficult to distinguish.",
+      "cards": [
+        { "title": "Voltage consistency", "body": "Parent-child voltage and source-to-customer voltage behaviour." },
+        { "title": "Feeder trends", "body": "Radial feeder voltage patterns and plausible downstream behaviour." },
+        { "title": "Current-flow consistency", "body": "Candidate edges should align with measured electrical signals." },
+        { "title": "Solar challenge", "body": "Rooftop solar can complicate simple voltage-drop assumptions." }
+      ],
+      "note": "Acknowledge that physics is useful, but naive voltage-drop rules can fail with solar."
     },
     {
       "type": "closing",
-      "headline": "Why this role fits",
-      "subheadline": "It sits at the intersection of leadership, delivery, and enterprise impact.",
+      "eyebrow": "Conclusion and next steps",
+      "headline": "Learned candidate ranking is a promising path toward smart-meter-based topology discovery.",
+      "subheadline": "The approach achieved strong unseen-sample performance and provides a clear path for physics-informed improvement.",
       "bullets": [
-        "Operate at scale",
-        "Deliver meaningful transformation",
-        "Lead through complexity",
-        "Support confident executive decisions",
-        "Create safe, successful cutover outcomes"
+        "Top-3 accuracy reached 98.1% on unseen tests.",
+        "Physics can improve realism and electrical plausibility.",
+        "Next: realistic candidates and measurement noise testing.",
+        "Goal: robust topology discovery from smart-meter data."
       ],
-      "cta": "Ready to help deliver Target is Ready"
+      "cta": "Next step: test harder real-world candidate sets.",
+      "note": "Finish by showing this is already useful as a candidate narrowing tool, with clear next steps."
     }
   ]
 }
