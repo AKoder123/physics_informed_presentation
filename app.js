@@ -1,209 +1,516 @@
-(() => {
-  const state = { deck: null, original: null, selected: 0, presenting: false, direction: 'next', storage: true };
-  const $ = (id) => document.getElementById(id);
-  const els = {
-    topbar: $('topbar'), deckTitle: $('deckTitle'), editorSlide: $('editorSlide'), thumbs: $('thumbs'), presenter: $('presenter'),
-    presentStage: $('presentStage'), slideCounter: $('slideCounter'), progressFill: $('progressFill'), presentDots: $('presentDots'),
-    slideTypeSelect: $('slideTypeSelect'), accentSelect: $('accentSelect'), speakerNote: $('speakerNote'), storageWarning: $('storageWarning'),
-    presentBtn: $('presentBtn'), exportPdfBtn: $('exportPdfBtn'), downloadJsonBtn: $('downloadJsonBtn'), resetDeckBtn: $('resetDeckBtn'),
-    addSlideBtn: $('addSlideBtn'), duplicateSlideBtn: $('duplicateSlideBtn'), deleteSlideBtn: $('deleteSlideBtn'), moveUpBtn: $('moveUpBtn'), moveDownBtn: $('moveDownBtn'),
-    prevBtn: $('prevBtn'), nextBtn: $('nextBtn'), exitPresentBtn: $('exitPresentBtn')
+const state = {
+  originalDeck: null,
+  deck: null,
+  selectedIndex: 0,
+  presenting: false,
+  storageKey: null,
+  localStorageAvailable: true
+};
+
+const els = {};
+const supportedTypes = ["title", "section", "content", "beforeAfter", "closing", "proof", "process", "cards"];
+
+window.addEventListener("DOMContentLoaded", init);
+
+async function init() {
+  cacheElements();
+  updateTopOffset();
+  window.addEventListener("resize", updateTopOffset);
+  await loadDeck();
+  bindEvents();
+  renderAll();
+}
+
+function cacheElements() {
+  Object.assign(els, {
+    deckTitle: document.getElementById("deckTitle"),
+    presentBtn: document.getElementById("presentBtn"),
+    exportPdfBtn: document.getElementById("exportPdfBtn"),
+    downloadJsonBtn: document.getElementById("downloadJsonBtn"),
+    resetDeckBtn: document.getElementById("resetDeckBtn"),
+    addSlideBtn: document.getElementById("addSlideBtn"),
+    duplicateSlideBtn: document.getElementById("duplicateSlideBtn"),
+    deleteSlideBtn: document.getElementById("deleteSlideBtn"),
+    moveUpBtn: document.getElementById("moveUpBtn"),
+    moveDownBtn: document.getElementById("moveDownBtn"),
+    thumbList: document.getElementById("thumbList"),
+    slideCanvas: document.getElementById("slideCanvas"),
+    slideTypeSelect: document.getElementById("slideTypeSelect"),
+    speakerNote: document.getElementById("speakerNote"),
+    presenter: document.getElementById("presenter"),
+    presentStage: document.getElementById("presentStage"),
+    prevPresentBtn: document.getElementById("prevPresentBtn"),
+    nextPresentBtn: document.getElementById("nextPresentBtn"),
+    slideCounter: document.getElementById("slideCounter"),
+    progressDots: document.getElementById("progressDots"),
+    loadWarning: document.getElementById("loadWarning")
+  });
+}
+
+function updateTopOffset() {
+  const topbar = document.getElementById("topbar");
+  const height = topbar ? Math.ceil(topbar.getBoundingClientRect().height) : 72;
+  document.documentElement.style.setProperty("--topOffset", `${height}px`);
+}
+
+async function loadDeck() {
+  try {
+    const response = await fetch("content.json", { cache: "no-store" });
+    if (!response.ok) throw new Error(`content.json returned ${response.status}`);
+    state.originalDeck = await response.json();
+  } catch (err) {
+    state.originalDeck = fallbackDeck();
+    showWarning("Could not fetch content.json. Some browsers block local file loading. Open this folder through a simple local server if the deck does not load as expected.");
+  }
+
+  state.storageKey = `flowpitch:${state.originalDeck.meta?.deckId || "deck"}:draft`;
+  state.localStorageAvailable = checkLocalStorage();
+  state.deck = deepClone(state.originalDeck);
+
+  if (state.localStorageAvailable) {
+    const saved = localStorage.getItem(state.storageKey);
+    if (saved) {
+      try { state.deck = JSON.parse(saved); }
+      catch { localStorage.removeItem(state.storageKey); }
+    }
+  } else {
+    showWarning("localStorage is unavailable. Edits will work during this session but will not autosave after reload.");
+  }
+}
+
+function bindEvents() {
+  els.presentBtn.addEventListener("click", enterPresentMode);
+  els.prevPresentBtn.addEventListener("click", prevSlide);
+  els.nextPresentBtn.addEventListener("click", nextSlide);
+  els.exportPdfBtn.addEventListener("click", exportPdf);
+  els.downloadJsonBtn.addEventListener("click", downloadJson);
+  els.resetDeckBtn.addEventListener("click", resetDeck);
+  els.addSlideBtn.addEventListener("click", addSlide);
+  els.duplicateSlideBtn.addEventListener("click", duplicateSlide);
+  els.deleteSlideBtn.addEventListener("click", deleteSlide);
+  els.moveUpBtn.addEventListener("click", moveSlideUp);
+  els.moveDownBtn.addEventListener("click", moveSlideDown);
+  els.slideTypeSelect.addEventListener("change", changeSlideType);
+  els.speakerNote.addEventListener("input", () => {
+    currentSlide().note = els.speakerNote.value;
+    persist();
+    renderThumbs();
+  });
+  document.addEventListener("keydown", handleKeys);
+}
+
+function renderAll() {
+  els.deckTitle.textContent = state.deck.meta?.title || "Untitled Deck";
+  renderThumbs();
+  renderEditorSlide();
+  updateInspector();
+}
+
+function renderThumbs() {
+  els.thumbList.innerHTML = "";
+  state.deck.slides.forEach((slide, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `thumb ${index === state.selectedIndex ? "is-selected" : ""}`;
+    button.setAttribute("aria-label", `Select slide ${index + 1}`);
+    button.innerHTML = `
+      <div class="thumb-number">${String(index + 1).padStart(2, "0")}</div>
+      <div class="thumb-title">${escapeHtml(slide.headline || "Untitled slide")}</div>
+      <div class="thumb-type">${escapeHtml(slide.type || "content")}</div>`;
+    button.addEventListener("click", () => {
+      state.selectedIndex = index;
+      renderAll();
+    });
+    els.thumbList.appendChild(button);
+  });
+}
+
+function renderEditorSlide() {
+  els.slideCanvas.innerHTML = "";
+  els.slideCanvas.appendChild(createSlideElement(currentSlide(), true));
+}
+
+function updateInspector() {
+  const slide = currentSlide();
+  els.slideTypeSelect.value = supportedTypes.includes(slide.type) ? slide.type : "content";
+  els.speakerNote.value = slide.note || "";
+}
+
+function createSlideElement(slide, editable = false) {
+  const root = document.createElement("article");
+  root.className = `deck-slide ${slide.type || "content"}`;
+  root.dataset.slideType = slide.type || "content";
+
+  const inner = document.createElement("div");
+  inner.className = "slide-inner";
+
+  const eyebrow = document.createElement("div");
+  eyebrow.className = "eyebrow";
+  eyebrow.dataset.animate = "";
+  eyebrow.textContent = typeLabel(slide.type);
+  inner.appendChild(eyebrow);
+
+  inner.appendChild(editableText("h1", "headline", slide.headline || "Untitled slide", editable, (value) => slide.headline = value));
+  if (slide.subheadline !== undefined || ["title", "section", "closing", "proof", "cards", "process", "beforeAfter"].includes(slide.type)) {
+    inner.appendChild(editableText("p", "subheadline", slide.subheadline || "", editable, (value) => slide.subheadline = value, "Add subheadline"));
+  }
+
+  if (slide.type === "beforeAfter") {
+    inner.appendChild(createCompare(slide, editable));
+  } else if (["cards", "proof", "process"].includes(slide.type)) {
+    inner.appendChild(createCards(slide, editable));
+  } else {
+    inner.appendChild(createBullets(slide, editable));
+  }
+
+  if (slide.cta !== undefined || ["title", "closing", "proof"].includes(slide.type)) {
+    inner.appendChild(editableText("div", "cta", slide.cta || "", editable, (value) => slide.cta = value, "Add CTA"));
+  }
+
+  root.appendChild(inner);
+  return root;
+}
+
+function editableText(tag, className, value, editable, onChange, placeholder = "Click to edit") {
+  const el = document.createElement(tag);
+  el.className = className;
+  el.dataset.animate = "";
+  el.textContent = value || placeholder;
+  if (editable) {
+    el.contentEditable = "true";
+    el.spellcheck = true;
+    el.dataset.placeholder = placeholder;
+    el.addEventListener("focus", () => { if (el.textContent === placeholder) el.textContent = ""; });
+    el.addEventListener("blur", () => {
+      const clean = el.textContent.trim();
+      onChange(clean);
+      if (!clean) el.textContent = placeholder;
+      persist();
+      renderThumbs();
+      updateInspector();
+    });
+    el.addEventListener("keydown", preventEnterExceptShift);
+  }
+  return el;
+}
+
+function preventEnterExceptShift(event) {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    event.currentTarget.blur();
+  }
+}
+
+function createBullets(slide, editable) {
+  const ul = document.createElement("ul");
+  ul.className = "bullet-list";
+  ul.dataset.animate = "";
+  if (!Array.isArray(slide.bullets)) slide.bullets = ["Add bullet"];
+  slide.bullets.forEach((bullet, index) => {
+    const li = document.createElement("li");
+    const span = editableText("span", "bullet-text", bullet, editable, (value) => slide.bullets[index] = value, "Add bullet");
+    li.appendChild(span);
+    ul.appendChild(li);
+  });
+  if (editable) {
+    const li = document.createElement("li");
+    const add = document.createElement("button");
+    add.type = "button";
+    add.textContent = "Add bullet";
+    add.addEventListener("click", () => {
+      slide.bullets.push("New bullet");
+      persist();
+      renderEditorSlide();
+    });
+    li.appendChild(add);
+    ul.appendChild(li);
+  }
+  return ul;
+}
+
+function createCards(slide, editable) {
+  if (!Array.isArray(slide.cards)) slide.cards = [{ title: "New card", body: "Add supporting detail." }];
+  const grid = document.createElement("div");
+  grid.className = `${slide.type === "process" ? "process-grid" : "card-grid"} ${slide.cards.length >= 4 ? "four" : ""}`;
+  grid.dataset.animate = "";
+  grid.setAttribute("role", "list");
+  slide.cards.forEach((card, index) => {
+    const item = document.createElement("div");
+    item.className = "card";
+    item.setAttribute("role", "listitem");
+    item.appendChild(editableText("h3", "card-title", card.title || "Card title", editable, (value) => card.title = value));
+    item.appendChild(editableText("p", "card-body", card.body || "Card body", editable, (value) => card.body = value));
+    if (editable) {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "Remove";
+      remove.className = "secondary";
+      remove.addEventListener("click", () => {
+        slide.cards.splice(index, 1);
+        if (!slide.cards.length) slide.cards.push({ title: "New card", body: "Add supporting detail." });
+        persist();
+        renderEditorSlide();
+      });
+      item.appendChild(remove);
+    }
+    grid.appendChild(item);
+  });
+  if (editable) {
+    const add = document.createElement("button");
+    add.type = "button";
+    add.textContent = "Add card";
+    add.addEventListener("click", () => {
+      slide.cards.push({ title: "New card", body: "Add supporting detail." });
+      persist();
+      renderEditorSlide();
+    });
+    grid.appendChild(add);
+  }
+  return grid;
+}
+
+function createCompare(slide, editable) {
+  slide.left ||= { title: "Before", bullets: ["Add point"] };
+  slide.right ||= { title: "After", bullets: ["Add point"] };
+  const grid = document.createElement("div");
+  grid.className = "compare-grid";
+  grid.dataset.animate = "";
+  grid.appendChild(createComparePanel(slide.left, editable, false));
+  grid.appendChild(createComparePanel(slide.right, editable, true));
+  return grid;
+}
+
+function createComparePanel(side, editable, highlight) {
+  const panel = document.createElement("div");
+  panel.className = `compare-panel ${highlight ? "highlight" : ""}`;
+  panel.appendChild(editableText("h3", "compare-title", side.title || "Title", editable, (value) => side.title = value));
+  const ul = document.createElement("ul");
+  ul.className = "bullet-list";
+  side.bullets ||= ["Add point"];
+  side.bullets.forEach((bullet, index) => {
+    const li = document.createElement("li");
+    li.appendChild(editableText("span", "bullet-text", bullet, editable, (value) => side.bullets[index] = value, "Add point"));
+    ul.appendChild(li);
+  });
+  panel.appendChild(ul);
+  return panel;
+}
+
+function currentSlide() { return state.deck.slides[state.selectedIndex]; }
+
+function addSlide() {
+  const slide = { type: "content", headline: "New slide", subheadline: "Add a clear supporting line.", bullets: ["First point", "Second point"], note: "" };
+  state.deck.slides.splice(state.selectedIndex + 1, 0, slide);
+  state.selectedIndex += 1;
+  persist(); renderAll();
+}
+
+function duplicateSlide() {
+  state.deck.slides.splice(state.selectedIndex + 1, 0, deepClone(currentSlide()));
+  state.selectedIndex += 1;
+  persist(); renderAll();
+}
+
+function deleteSlide() {
+  if (state.deck.slides.length === 1) {
+    state.deck.slides[0] = { type: "content", headline: "New slide", subheadline: "Add a clear supporting line.", bullets: ["First point"] };
+  } else {
+    state.deck.slides.splice(state.selectedIndex, 1);
+    state.selectedIndex = Math.max(0, state.selectedIndex - 1);
+  }
+  persist(); renderAll();
+}
+
+function moveSlideUp() {
+  if (state.selectedIndex === 0) return;
+  const i = state.selectedIndex;
+  [state.deck.slides[i - 1], state.deck.slides[i]] = [state.deck.slides[i], state.deck.slides[i - 1]];
+  state.selectedIndex -= 1;
+  persist(); renderAll();
+}
+
+function moveSlideDown() {
+  if (state.selectedIndex >= state.deck.slides.length - 1) return;
+  const i = state.selectedIndex;
+  [state.deck.slides[i + 1], state.deck.slides[i]] = [state.deck.slides[i], state.deck.slides[i + 1]];
+  state.selectedIndex += 1;
+  persist(); renderAll();
+}
+
+function changeSlideType() {
+  const slide = currentSlide();
+  slide.type = els.slideTypeSelect.value;
+  if (["cards", "proof", "process"].includes(slide.type) && !Array.isArray(slide.cards)) {
+    slide.cards = [{ title: "Card title", body: "Add supporting detail." }, { title: "Card title", body: "Add supporting detail." }, { title: "Card title", body: "Add supporting detail." }];
+  }
+  if (slide.type === "beforeAfter") {
+    slide.left ||= { title: "Before", bullets: slide.bullets?.slice(0, 3) || ["Add point"] };
+    slide.right ||= { title: "After", bullets: ["Add point"] };
+  }
+  if (!["cards", "proof", "process"].includes(slide.type) && !Array.isArray(slide.bullets)) {
+    slide.bullets = ["Add point"];
+  }
+  persist(); renderAll();
+}
+
+function enterPresentMode() {
+  state.presenting = true;
+  document.body.classList.add("is-presenting");
+  els.presenter.hidden = false;
+  renderPresentSlide();
+  if (els.presenter.requestFullscreen) els.presenter.requestFullscreen().catch(() => {});
+}
+
+function exitPresentMode() {
+  state.presenting = false;
+  document.body.classList.remove("is-presenting");
+  els.presenter.hidden = true;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  renderAll();
+}
+
+function renderPresentSlide() {
+  els.presentStage.innerHTML = "";
+  const slideEl = createSlideElement(currentSlide(), false);
+  slideEl.classList.add("is-active");
+  els.presentStage.appendChild(slideEl);
+  els.slideCounter.textContent = `${state.selectedIndex + 1} / ${state.deck.slides.length}`;
+  els.progressDots.innerHTML = "";
+  state.deck.slides.forEach((_, index) => {
+    const dot = document.createElement("span");
+    dot.className = index === state.selectedIndex ? "is-active" : "";
+    els.progressDots.appendChild(dot);
+  });
+}
+
+function nextSlide() {
+  if (state.selectedIndex < state.deck.slides.length - 1) {
+    state.selectedIndex += 1;
+    state.presenting ? renderPresentSlide() : renderAll();
+  }
+}
+
+function prevSlide() {
+  if (state.selectedIndex > 0) {
+    state.selectedIndex -= 1;
+    state.presenting ? renderPresentSlide() : renderAll();
+  }
+}
+
+function handleKeys(event) {
+  if (!state.presenting) return;
+  if ([" ", "ArrowRight"].includes(event.key)) { event.preventDefault(); nextSlide(); }
+  if (event.key === "ArrowLeft") { event.preventDefault(); prevSlide(); }
+  if (event.key === "Escape") { event.preventDefault(); exitPresentMode(); }
+}
+
+async function exportPdf() {
+  const button = els.exportPdfBtn;
+  const oldLabel = button.textContent;
+  button.disabled = true;
+  button.textContent = "Exporting…";
+  document.body.classList.add("exportingPdf");
+
+  try {
+    await ensurePdfLibraries();
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [1920, 1080], compress: true });
+
+    for (let i = 0; i < state.deck.slides.length; i += 1) {
+      const stage = document.createElement("div");
+      stage.id = "pdfStage";
+      const slide = createSlideElement(state.deck.slides[i], false);
+      slide.classList.add("is-active");
+      stage.appendChild(slide);
+      document.body.appendChild(stage);
+      await nextFrame();
+      const canvas = await window.html2canvas(stage, {
+        backgroundColor: "#050611",
+        scale: Math.max(window.devicePixelRatio || 1, 2),
+        useCORS: true
+      });
+      const img = canvas.toDataURL("image/png");
+      if (i > 0) pdf.addPage([1920, 1080], "landscape");
+      pdf.addImage(img, "PNG", 0, 0, 1920, 1080);
+      stage.remove();
+    }
+    pdf.save("FlowPitch.pdf");
+  } catch (err) {
+    alert("PDF export failed. Make sure cdnjs.cloudflare.com is allowed, or self-host html2canvas and jsPDF. Details: " + err.message);
+  } finally {
+    document.querySelectorAll("#pdfStage").forEach(el => el.remove());
+    document.body.classList.remove("exportingPdf");
+    button.disabled = false;
+    button.textContent = oldLabel;
+  }
+}
+
+function ensurePdfLibraries() {
+  return Promise.all([
+    loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js", () => window.html2canvas),
+    loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js", () => window.jspdf?.jsPDF)
+  ]);
+}
+
+function loadScript(src, test) {
+  if (test()) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => test() ? resolve() : reject(new Error(`Loaded ${src} but library was unavailable`));
+    script.onerror = () => reject(new Error(`Could not load ${src}`));
+    document.head.appendChild(script);
+  });
+}
+
+function downloadJson() {
+  const blob = new Blob([JSON.stringify(state.deck, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "content.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function resetDeck() {
+  if (state.localStorageAvailable) localStorage.removeItem(state.storageKey);
+  state.deck = deepClone(state.originalDeck);
+  state.selectedIndex = 0;
+  renderAll();
+}
+
+function persist() {
+  if (!state.localStorageAvailable) return;
+  try { localStorage.setItem(state.storageKey, JSON.stringify(state.deck)); }
+  catch { state.localStorageAvailable = false; showWarning("Autosave failed because localStorage is unavailable or full."); }
+}
+
+function checkLocalStorage() {
+  try {
+    const key = "flowpitch:test";
+    localStorage.setItem(key, "1");
+    localStorage.removeItem(key);
+    return true;
+  } catch { return false; }
+}
+
+function showWarning(message) {
+  els.loadWarning.textContent = message;
+  els.loadWarning.hidden = false;
+}
+
+function nextFrame() { return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); }
+function deepClone(value) { return JSON.parse(JSON.stringify(value)); }
+function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c])); }
+function typeLabel(type) {
+  return ({ title: "Opening", section: "Signpost", content: "Readiness", beforeAfter: "Shift", closing: "Close", proof: "Proof", process: "Operating model", cards: "Focus areas" })[type] || "Slide";
+}
+
+function fallbackDeck() {
+  return {
+    meta: { deckId: "fallback", title: "FlowPitch Deck", theme: "flowpitch-dark" },
+    slides: [{ type: "title", headline: "FlowPitch Deck", subheadline: "Add your content in content.json.", bullets: ["Editable slides", "Presenter mode", "PDF export"], cta: "Ready to present" }]
   };
-
-  const clone = (obj) => JSON.parse(JSON.stringify(obj));
-  const escapeHtml = (str = '') => String(str).replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
-  const storageKey = () => `flowpitch:${state.original?.meta?.deckId || state.deck?.meta?.deckId || 'deck'}:draft`;
-
-  function setTopOffset() {
-    const h = els.topbar?.getBoundingClientRect().height || 76;
-    document.documentElement.style.setProperty('--topOffset', `${Math.ceil(h)}px`);
-  }
-
-  function saveDraft() {
-    if (!state.deck) return;
-    try { localStorage.setItem(storageKey(), JSON.stringify(state.deck)); state.storage = true; }
-    catch { state.storage = false; els.storageWarning.hidden = false; }
-  }
-
-  async function init() {
-    setTopOffset(); window.addEventListener('resize', setTopOffset);
-    try {
-      const res = await fetch('content.json', { cache: 'no-store' });
-      if (!res.ok) throw new Error(`Could not load content.json (${res.status})`);
-      state.original = await res.json();
-      const key = `flowpitch:${state.original.meta.deckId}:draft`;
-      const saved = safeGet(key);
-      state.deck = saved ? JSON.parse(saved) : clone(state.original);
-      applyTheme(); bindEvents(); renderAll(); setupPdfExport();
-    } catch (err) {
-      document.body.innerHTML = `<main style="max-width:760px;margin:10vh auto;font-family:system-ui;padding:28px;line-height:1.5"><h1>Unable to load the deck</h1><p>This browser blocked loading <code>content.json</code> directly from the file system. Open this folder through a simple local server, for example <code>python -m http.server</code>, then visit the local address shown in the terminal.</p><p>${escapeHtml(err.message)}</p></main>`;
-    }
-  }
-
-  function safeGet(key) { try { return localStorage.getItem(key); } catch { state.storage = false; return null; } }
-  function applyTheme() {
-    const accent = state.deck?.meta?.accent || '#1f6feb';
-    document.documentElement.style.setProperty('--accent', accent);
-    els.accentSelect.value = accent;
-    els.storageWarning.hidden = state.storage;
-  }
-
-  function bindEvents() {
-    els.presentBtn.addEventListener('click', enterPresentMode);
-    els.prevBtn.addEventListener('click', prevSlide);
-    els.nextBtn.addEventListener('click', nextSlide);
-    els.exitPresentBtn.addEventListener('click', exitPresentMode);
-    els.downloadJsonBtn.addEventListener('click', downloadJson);
-    els.resetDeckBtn.addEventListener('click', resetDeck);
-    els.addSlideBtn.addEventListener('click', addSlide);
-    els.duplicateSlideBtn.addEventListener('click', duplicateSlide);
-    els.deleteSlideBtn.addEventListener('click', deleteSlide);
-    els.moveUpBtn.addEventListener('click', () => moveSlide(-1));
-    els.moveDownBtn.addEventListener('click', () => moveSlide(1));
-    els.slideTypeSelect.addEventListener('change', () => { current().type = els.slideTypeSelect.value; ensureTypeFields(current()); changed(); });
-    els.accentSelect.addEventListener('change', () => { state.deck.meta.accent = els.accentSelect.value; applyTheme(); changed(false); });
-    els.speakerNote.addEventListener('input', () => { current().note = els.speakerNote.value; changed(false); });
-    document.addEventListener('keydown', handleKeys);
-    document.addEventListener('pointermove', pointerGlow);
-  }
-
-  function current() { return state.deck.slides[state.selected]; }
-  function changed(rerender = true) { saveDraft(); if (rerender) renderAll(); else renderThumbs(); }
-  function renderAll() { applyTheme(); els.deckTitle.textContent = state.deck.meta.title || 'Untitled deck'; renderThumbs(); renderEditor(); renderInspector(); }
-
-  function renderThumbs() {
-    els.thumbs.innerHTML = state.deck.slides.map((s, i) => `<button class="thumb ${i === state.selected ? 'active' : ''}" type="button" data-idx="${i}"><div class="thumb-num">${String(i+1).padStart(2,'0')}</div><div class="thumb-title">${escapeHtml(s.headline || 'Untitled slide')}</div><div class="thumb-type">${escapeHtml(s.type || 'content')}</div></button>`).join('');
-    els.thumbs.querySelectorAll('.thumb').forEach(btn => btn.addEventListener('click', () => { state.selected = Number(btn.dataset.idx); renderAll(); }));
-  }
-
-  function renderEditor() { els.editorSlide.innerHTML = renderSlide(current(), state.selected, { editable: true, active: true }); attachEditableHandlers(els.editorSlide); }
-  function renderInspector() { const s = current(); els.slideTypeSelect.value = s.type || 'content'; els.speakerNote.value = s.note || ''; }
-
-  function editable(text, path, tag = 'div', cls = '') {
-    return `<${tag} class="editable ${cls}" contenteditable="true" spellcheck="true" data-path="${path}">${escapeHtml(text || '')}</${tag}>`;
-  }
-  function textEl(text, tag = 'div', cls = '') { return `<${tag} class="${cls}">${escapeHtml(text || '')}</${tag}>`; }
-
-  function renderSlide(slide, idx, opts = {}) {
-    const active = opts.active ? ' is-active' : '';
-    const top = `
-      <div class="bg-grid" aria-hidden="true"></div>
-      ${opts.editable ? editable(slide.eyebrow, 'eyebrow', 'div', 'eyebrow') : textEl(slide.eyebrow, 'div', 'eyebrow')} 
-      ${opts.editable ? editable(slide.headline, 'headline', 'h2', 'headline') : textEl(slide.headline, 'h2', 'headline')} 
-      ${slide.subheadline !== undefined ? (opts.editable ? editable(slide.subheadline, 'subheadline', 'p', 'subheadline') : textEl(slide.subheadline, 'p', 'subheadline')) : ''}`;
-    let body = '';
-    const type = slide.type || 'content';
-    if (type === 'title') body = renderTitle(slide, opts);
-    else if (type === 'cards') body = renderCards(slide, opts);
-    else if (type === 'beforeAfter') body = renderBeforeAfter(slide, opts);
-    else if (type === 'process') body = renderProcess(slide, opts);
-    else if (type === 'proof') body = renderProof(slide, opts);
-    else if (type === 'visual') body = renderVisual(slide, opts);
-    else if (type === 'section') body = renderSection(slide, opts);
-    else if (type === 'closing') body = renderClosing(slide, opts);
-    else body = renderContent(slide, opts);
-    return `<article class="slide-shell slide-${type}${active}" data-slide-index="${idx}">${top}${body}<div class="slide-number">${idx + 1}</div></article>`;
-  }
-
-  function renderTitle(s, opts) {
-    const metrics = (s.metrics || []).map((m, i) => `<div class="metric" data-animate style="--d:${250+i*130}ms">${opts.editable ? editable(m.value, `metrics.${i}.value`, 'div', 'metric-value') : textEl(m.value, 'div', 'metric-value')} ${opts.editable ? editable(m.label, `metrics.${i}.label`, 'div', 'metric-label') : textEl(m.label, 'div', 'metric-label')}</div>`).join('');
-    return `<div class="grid-2">${metrics}</div>`;
-  }
-  function renderCards(s, opts) { return `<div class="grid-${Math.min(s.cards?.length || 3, 4)}">${(s.cards || []).map((c,i)=>`<div class="card" data-animate style="--d:${180+i*120}ms">${opts.editable ? editable(c.title, `cards.${i}.title`, 'h3') : textEl(c.title,'h3')} ${opts.editable ? editable(c.body, `cards.${i}.body`, 'p') : textEl(c.body,'p')}</div>`).join('')}</div>`; }
-  function renderBeforeAfter(s, opts) {
-    const panel = (side, name, delay) => `<div class="panel" data-animate style="--d:${delay}ms">${opts.editable ? editable(side?.title, `${name}.title`, 'h3') : textEl(side?.title,'h3')}<ul class="clean">${(side?.bullets || []).map((b,i)=>`<li>${opts.editable ? editable(b, `${name}.bullets.${i}`, 'span') : escapeHtml(b)}</li>`).join('')}</ul></div>`;
-    return `<div class="grid-2">${panel(s.left || {}, 'left', 200)}${panel(s.right || {}, 'right', 420)}</div>`;
-  }
-  function renderProcess(s, opts) { return `<div class="process">${(s.steps || []).map((st,i)=>`<div class="step" data-animate style="--d:${180+i*110}ms"><div class="step-index">${i+1}</div>${opts.editable ? editable(st.title, `steps.${i}.title`, 'h3') : textEl(st.title,'h3')}${opts.editable ? editable(st.body, `steps.${i}.body`, 'p') : textEl(st.body,'p')}</div>`).join('')}</div>`; }
-  function renderProof(s, opts) {
-    const metrics = `<div class="grid-3">${(s.metrics || []).map((m,i)=>`<div class="metric" data-animate style="--d:${170+i*130}ms">${opts.editable ? editable(m.value, `metrics.${i}.value`, 'div', 'metric-value') : textEl(m.value,'div','metric-value')} ${opts.editable ? editable(m.label, `metrics.${i}.label`, 'div', 'metric-label') : textEl(m.label,'div','metric-label')}</div>`).join('')}</div>`;
-    return `${metrics}${renderBullets(s, opts)}${s.cta !== undefined ? (opts.editable ? editable(s.cta, 'cta', 'div', 'cta') : `<div class="cta" data-animate style="--d:650ms">${escapeHtml(s.cta)}</div>`) : ''}`;
-  }
-  function renderVisual(s, opts) { return `${renderBullets(s, opts)}<div class="visual-diagram" data-animate style="--d:480ms">${diagram()}</div>`; }
-  function renderSection(s, opts) { return `<div data-animate style="--d:250ms">${renderBullets(s, opts)}</div>`; }
-  function renderClosing(s, opts) { return `${renderBullets(s, opts)}${opts.editable ? editable(s.cta, 'cta', 'div', 'cta') : `<div class="cta" data-animate style="--d:450ms">${escapeHtml(s.cta || '')}</div>`}`; }
-  function renderContent(s, opts) { return renderBullets(s, opts); }
-  function renderBullets(s, opts) { return `<ul class="clean">${(s.bullets || []).map((b,i)=>`<li data-animate style="--d:${180+i*90}ms">${opts.editable ? editable(b, `bullets.${i}`, 'span') : escapeHtml(b)}</li>`).join('')}</ul>`; }
-  function diagram() {
-    const nodes = [[12,22],[32,36],[54,27],[75,42],[38,62],[63,68],[83,72],[21,78]];
-    const edges = [[12,22,26,20,32],[32,36,26,-15,25],[32,36,9,28,30],[54,27,24,18,37],[38,62,25,8,16],[63,68,22,3,8],[21,78,18,-30,29]];
-    return edges.map(e=>`<span class="edge" style="left:${e[0]}%;top:${e[1]}%;width:${e[2]}%;transform:rotate(${e[3]}deg)"></span>`).join('') + nodes.map(n=>`<span class="node" style="left:${n[0]}%;top:${n[1]}%"></span>`).join('');
-  }
-
-  function attachEditableHandlers(root) {
-    root.querySelectorAll('[contenteditable][data-path]').forEach(el => {
-      el.addEventListener('input', () => { setPath(current(), el.dataset.path, el.innerText.trim()); saveDraft(); renderThumbs(); });
-      el.addEventListener('blur', () => renderInspector());
-      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); el.blur(); } });
-    });
-  }
-  function setPath(obj, path, value) {
-    const parts = path.split('.'); let ref = obj;
-    for (let i=0; i<parts.length-1; i++) ref = ref[parts[i]];
-    ref[parts.at(-1)] = value;
-  }
-  function ensureTypeFields(s) { s.bullets ||= ['Key point one', 'Key point two']; s.cards ||= [{title:'Card title', body:'Card body'}]; s.steps ||= [{title:'Step title', body:'Step body'}]; s.metrics ||= [{value:'Metric', label:'Label'}]; s.left ||= {title:'Before', bullets:['Point']}; s.right ||= {title:'After', bullets:['Point']}; }
-
-  function addSlide() { const s = { type:'content', eyebrow:'New slide', headline:'Editable slide headline', subheadline:'Add your supporting message here.', bullets:['First key point','Second key point'], note:'' }; state.deck.slides.splice(state.selected+1,0,s); state.selected++; changed(); }
-  function duplicateSlide() { state.deck.slides.splice(state.selected+1,0,clone(current())); state.selected++; changed(); }
-  function deleteSlide() { if (state.deck.slides.length === 1) state.deck.slides[0] = { type:'content', eyebrow:'Placeholder', headline:'New slide', subheadline:'Start editing.', bullets:['Add a key point'], note:'' }; else { state.deck.slides.splice(state.selected,1); state.selected = Math.max(0, state.selected-1); } changed(); }
-  function moveSlide(dir) { const ni = state.selected + dir; if (ni < 0 || ni >= state.deck.slides.length) return; [state.deck.slides[state.selected], state.deck.slides[ni]] = [state.deck.slides[ni], state.deck.slides[state.selected]]; state.selected = ni; changed(); }
-
-  function enterPresentMode() { state.presenting = true; document.body.classList.add('presenting'); els.presenter.classList.add('active'); els.presenter.setAttribute('aria-hidden','false'); renderPresenter(true); document.documentElement.requestFullscreen?.().catch(()=>{}); }
-  function exitPresentMode() { state.presenting = false; document.body.classList.remove('presenting'); els.presenter.classList.remove('active'); els.presenter.setAttribute('aria-hidden','true'); document.exitFullscreen?.().catch(()=>{}); renderAll(); }
-  function renderPresenter(first=false) {
-    els.presenter.classList.toggle('prev-dir', state.direction === 'prev');
-    els.presentStage.innerHTML = renderSlide(current(), state.selected, { editable:false, active:false });
-    requestAnimationFrame(()=>{ const slide = els.presentStage.querySelector('.slide-shell'); slide?.classList.add('is-active'); animateCounters(slide); });
-    els.slideCounter.textContent = `${state.selected + 1} / ${state.deck.slides.length}`;
-    els.progressFill.style.width = `${((state.selected+1)/state.deck.slides.length)*100}%`;
-    els.presentDots.innerHTML = state.deck.slides.map((_,i)=>`<button type="button" aria-label="Go to slide ${i+1}" class="${i===state.selected?'active':''}" data-idx="${i}"></button>`).join('');
-    els.presentDots.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{ state.direction = Number(b.dataset.idx) < state.selected ? 'prev':'next'; state.selected=Number(b.dataset.idx); renderPresenter(); }));
-  }
-  function animateCounters(root) {
-    root?.querySelectorAll('.metric-value').forEach(el => {
-      const raw = el.textContent.trim(); const match = raw.match(/^~?([0-9]+(?:\.[0-9]+)?)(%?)$/); if (!match) return;
-      const target = Number(match[1]); const suffix = match[2] || ''; const prefix = raw.startsWith('~') ? '~' : ''; const start = performance.now();
-      const tick = (t) => { const p = Math.min(1,(t-start)/850); const v = target*p; el.textContent = `${prefix}${target < 2 ? v.toFixed(2) : Math.round(v)}${suffix}`; if (p<1) requestAnimationFrame(tick); else el.textContent = raw; };
-      requestAnimationFrame(tick);
-    });
-  }
-  function nextSlide() { if (!state.presenting) return; if (state.selected < state.deck.slides.length-1) { state.direction='next'; state.selected++; renderPresenter(); } }
-  function prevSlide() { if (!state.presenting) return; if (state.selected > 0) { state.direction='prev'; state.selected--; renderPresenter(); } }
-  function handleKeys(e) { if (!state.presenting) return; if (e.key === 'Escape') exitPresentMode(); if (e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); nextSlide(); } if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); } }
-  function pointerGlow(e) { if (!state.presenting) return; document.documentElement.style.setProperty('--mx', `${e.clientX}px`); document.documentElement.style.setProperty('--my', `${e.clientY}px`); }
-  function downloadJson() { const blob = new Blob([JSON.stringify(state.deck,null,2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'content.json'; a.click(); URL.revokeObjectURL(a.href); }
-  function resetDeck() { try { localStorage.removeItem(storageKey()); } catch {} state.deck = clone(state.original); state.selected = 0; changed(); }
-
-  function loadScript(src) { return new Promise((resolve,reject)=>{ if ([...document.scripts].some(s=>s.src===src)) return resolve(); const s=document.createElement('script'); s.src=src; s.onload=resolve; s.onerror=reject; document.head.appendChild(s); }); }
-  function setupPdfExport() { els.exportPdfBtn.addEventListener('click', exportPdf); }
-  async function exportPdf() {
-    const btn = els.exportPdfBtn; const label = btn.textContent;
-    try {
-      btn.disabled = true; btn.textContent = 'Exporting…'; document.body.classList.add('exportingPdf');
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({ orientation:'landscape', unit:'px', format:[1920,1080], compress:true });
-      for (let i=0; i<state.deck.slides.length; i++) {
-        const stage = document.createElement('div'); stage.id = 'pdfStage';
-        stage.innerHTML = `<div class="present-bg"><span></span><span></span><span></span></div>${renderSlide(state.deck.slides[i], i, { editable:false, active:true })}`;
-        document.body.appendChild(stage);
-        await new Promise(r => requestAnimationFrame(()=>requestAnimationFrame(r)));
-        const canvas = await window.html2canvas(stage, { backgroundColor:'#050611', scale: Math.max(window.devicePixelRatio || 1, 2), useCORS: true });
-        const img = canvas.toDataURL('image/png');
-        if (i > 0) pdf.addPage([1920,1080], 'landscape');
-        pdf.addImage(img, 'PNG', 0, 0, 1920, 1080);
-        stage.remove();
-      }
-      pdf.save('FlowPitch.pdf');
-    } catch (err) {
-      alert('PDF export could not load its capture libraries. Please allow cdnjs.cloudflare.com, or self-host html2canvas and jsPDF.\n\n' + err.message);
-    } finally {
-      document.querySelectorAll('#pdfStage').forEach(el=>el.remove());
-      document.body.classList.remove('exportingPdf'); btn.disabled = false; btn.textContent = label;
-    }
-  }
-
-  init();
-})();
+}

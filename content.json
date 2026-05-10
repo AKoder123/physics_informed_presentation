@@ -1,195 +1,178 @@
 {
   "meta": {
-    "deckId": "physics-informed-topology-reconstruction-advay-2026",
-    "title": "AI-based model discovery for active distribution networks",
-    "theme": "academic-light",
-    "accent": "#1f6feb"
+    "deckId": "target-is-ready-senior-delivery-manager",
+    "title": "Target is Ready: Senior Delivery Manager",
+    "theme": "flowpitch-dark"
   },
   "slides": [
     {
       "type": "title",
-      "eyebrow": "Final Year Project",
-      "headline": "AI-based model discovery for active distribution networks",
-      "subheadline": "Physics-informed candidate ranking for low-voltage topology reconstruction from smart-meter data.",
-      "metrics": [
-        {"value": "Advay Kumar", "label": "Presenter"},
-        {"value": "May 1, 2026", "label": "Date"}
-      ],
-      "note": "Open with the central aim: reconstructing LV radial topology using voltage and current data."
-    },
-    {
-      "type": "cards",
-      "eyebrow": "Presentation Outline",
-      "headline": "Four steps from grid problem to model direction",
-      "subheadline": "The story moves from operational need, to formulation, to model design, to results and next steps.",
-      "cards": [
-        {"title": "Introduction", "body": "Dynamic LV networks, operational needs, and project aims."},
-        {"title": "Problem Formulation", "body": "Literature gap, smart-meter data, and preprocessing pipeline."},
-        {"title": "Model Architecture", "body": "Candidate ranking compared with direct edge prediction."},
-        {"title": "Results & Next Steps", "body": "Test performance, physics direction, and robustness plans."}
-      ],
-      "note": "Use this as the signposting slide."
-    },
-    {
-      "type": "visual",
-      "eyebrow": "Project Aim & Context",
-      "headline": "Turn smart-meter signals into actionable grid topology",
-      "subheadline": "The project reconstructs low-voltage radial network structure from voltage and current measurements.",
+      "headline": "Target is Ready",
+      "subheadline": "Senior Delivery Manager narrative for a high-stakes integration workstream",
       "bullets": [
-        "Reconstruct LV radial topology from meter data.",
-        "Use learned candidate topology ranking.",
-        "Add physics-informed consistency features.",
-        "Bridge raw measurements and infrastructure maps."
+        "Readiness, governance, execution discipline",
+        "Prepared for enterprise-scale banking transformation"
       ],
-      "note": "Stress that the available evidence is electrical measurement data, not perfect network records."
+      "cta": "Role interview narrative"
     },
     {
-      "type": "beforeAfter",
-      "eyebrow": "Problem & Motivation",
-      "headline": "LV networks are changing faster than records can keep up",
-      "subheadline": "Accurate topology is fundamental for monitoring, planning, state estimation, and control.",
-      "left": {
-        "title": "More dynamic grids",
-        "bullets": [
-          "Rooftop solar generation",
-          "Electric vehicle charging",
-          "Flexible and intermittent loads",
-          "Rapid demand pattern changes"
-        ]
-      },
-      "right": {
-        "title": "Operational need",
-        "bullets": [
-          "Topology records can be incomplete.",
-          "Records may become outdated.",
-          "Uncertainty limits reliable control.",
-          "Meter data contains electrical signatures."
-        ]
-      },
-      "note": "Frame this as an operational need, not just an ML exercise."
-    },
-    {
-      "type": "content",
-      "eyebrow": "Literature Gap & Research Question",
-      "headline": "The gap is learned, physics-informed candidate ranking",
-      "subheadline": "Prior work covers smart-meter topology identification and candidate-based reconstruction, but not this exact combination.",
+      "type": "section",
+      "headline": "The core message",
+      "subheadline": "Successful cutover is earned before the migration window opens.",
       "bullets": [
-        "Smart-meter topology identification exists.",
-        "Candidate reconstruction approaches exist.",
-        "Physics-informed learned ranking is underexplored.",
-        "Pure voltage/current reconstruction remains challenging.",
-        "Question: can electrical and physics signals rank candidates?"
+        "No assumptions",
+        "Validated readiness",
+        "Clear accountability",
+        "Fast escalation",
+        "Aligned stakeholders"
       ],
-      "note": "Mention Liu et al. as motivation for candidate topology reconstruction, then define the gap clearly."
-    },
-    {
-      "type": "cards",
-      "eyebrow": "Problem Formulation & Data Structure",
-      "headline": "Each phase becomes one independent topology example",
-      "subheadline": "The model maps aligned voltage/current measurements and candidate graphs to a selected radial topology.",
-      "cards": [
-        {"title": "Model inputs", "body": "Voltage_Gk.csv, Current_RE_Gk.csv, Current_IM_Gk.csv, Vtr_save.mat, and nmi_k.csv."},
-        {"title": "Ground truth", "body": "A_base_k.csv provides the target adjacency matrix for evaluation."},
-        {"title": "Target output", "body": "A selected radial topology represented as a binary adjacency matrix."}
-      ],
-      "note": "Keep this concrete: what files go in, what structure comes out."
-    },
-    {
-      "type": "process",
-      "eyebrow": "Data Pipeline & Preprocessing",
-      "headline": "A strict pipeline turns feeder files into trainable examples",
-      "subheadline": "Filtering protects the candidate ranker from malformed data and weakly observed cases.",
-      "steps": [
-        {"title": "Load", "body": "Load feeder and phase folders."},
-        {"title": "Ingest", "body": "Read voltage and current files."},
-        {"title": "Align", "body": "Use NMI mapping to match nodes."},
-        {"title": "Extract", "body": "Build node and source features."},
-        {"title": "Generate", "body": "Create candidate radial topologies."},
-        {"title": "Filter", "body": "Drop unreliable or under-observed examples."}
-      ],
-      "note": "Mention mapping, integrity, and observability as the three main filters."
-    },
-    {
-      "type": "beforeAfter",
-      "eyebrow": "Direct Edge Prediction",
-      "headline": "Directly predicting edges struggled to produce valid networks",
-      "subheadline": "A local node-pair prediction task does not naturally enforce global radial structure.",
-      "left": {
-        "title": "Initial approach",
-        "bullets": [
-          "Predict edge probability for node pairs.",
-          "Use node and source features.",
-          "Threshold into an adjacency matrix."
-        ]
-      },
-      "right": {
-        "title": "Critical issues",
-        "bullets": [
-          "Non-edges dominate actual edges.",
-          "Loops and disconnections can appear.",
-          "Exact topology reconstruction was poor."
-        ]
-      },
-      "note": "Use this to justify why the project moved to candidate ranking."
-    },
-    {
-      "type": "process",
-      "eyebrow": "Current Model: Candidate Topology Ranker",
-      "headline": "Rank whole radial structures instead of isolated edges",
-      "subheadline": "Each candidate topology receives a scalar plausibility score, then the highest-ranked graph is selected.",
-      "steps": [
-        {"title": "Generate", "body": "Create diverse candidate radial trees."},
-        {"title": "Represent", "body": "Extract structural and physical features."},
-        {"title": "Score", "body": "Use a neural model for plausibility."},
-        {"title": "Select", "body": "Choose the highest-ranked topology."}
-      ],
-      "note": "The paradigm shift is candidate topology to plausibility score."
-    },
-    {
-      "type": "cards",
-      "eyebrow": "Model Architecture & Features",
-      "headline": "Separate encoders combine measurement, source, and candidate evidence",
-      "subheadline": "The combined MLP head outputs one scalar candidate score for ranking non-differentiable graph structures.",
-      "cards": [
-        {"title": "Node & source", "body": "Voltage/current statistics, real and imaginary current metrics, observed-node flags, and source trends."},
-        {"title": "Candidate setup", "body": "Edge counts, degree statistics, graph depth, observed-edge ratios, MST scores, and physics consistency."},
-        {"title": "Neural model", "body": "Node encoder MLP, source encoder MLP, candidate encoder MLP, then combined MLP head."}
-      ],
-      "note": "This is the main technical architecture slide."
-    },
-    {
-      "type": "content",
-      "eyebrow": "Training Process & Evaluation",
-      "headline": "Training teaches the model to rank the true topology above alternatives",
-      "subheadline": "Candidate sets are built per phase, with the true topology always included as the positive label.",
-      "bullets": [
-        "Negatives include signal-based MSTs.",
-        "Perturbed true topologies add hard alternatives.",
-        "Random or guided MSTs broaden candidates.",
-        "Top-1 accuracy checks exact first choice.",
-        "MRR captures true topology rank.",
-        "Selected-edge F1 measures edge overlap."
-      ],
-      "note": "Emphasise exact topology accuracy and selected-edge F1 as complementary metrics."
+      "note": "Use this to frame the rest of the discussion."
     },
     {
       "type": "proof",
-      "eyebrow": "Initial Results & Next Steps",
-      "headline": "Candidate ranking is strong; physics is the next lever",
-      "subheadline": "The candidate ranker substantially improves over direct edge prediction and sets up the physics-informed extension.",
-      "metrics": [
-        {"value": "~77%", "label": "Exact / Top-1 topology selection"},
-        {"value": "~0.98", "label": "Selected-edge F1 score"},
-        {"value": "4", "label": "Next steps: compare, refine, scale, stress test"}
+      "headline": "Relevant delivery record",
+      "subheadline": "Experience across complex, one-of-a-kind banking programs.",
+      "cards": [
+        {
+          "title": "Data Centre Expansion",
+          "body": "Large-scale technology migration requiring precision and coordination."
+        },
+        {
+          "title": "ANZ Wealth Sale",
+          "body": "Multi-stakeholder transformation with significant operational dependencies."
+        },
+        {
+          "title": "Suncorp Day 1",
+          "body": "Successful execution under high pressure and tight governance."
+        }
       ],
+      "cta": "Proven in high-stakes environments"
+    },
+    {
+      "type": "cards",
+      "headline": "Three success factors for Big Bang execution",
+      "subheadline": "The workstream succeeds when readiness becomes measurable and operational.",
+      "cards": [
+        {
+          "title": "Absolute readiness clarity",
+          "body": "Validate operational, technical, and workforce criteria before cutover."
+        },
+        {
+          "title": "Disciplined execution",
+          "body": "Runbooks, ownership, command centre oversight, and controlled delivery."
+        },
+        {
+          "title": "Proactive risk management",
+          "body": "Identify dependencies early and escalate issues decisively."
+        }
+      ]
+    },
+    {
+      "type": "beforeAfter",
+      "headline": "The difference between activity and readiness",
+      "subheadline": "The role is about proving the organisation is genuinely prepared.",
+      "left": {
+        "title": "Activity focus",
+        "bullets": [
+          "Plans exist",
+          "Meetings occur",
+          "Reports are produced",
+          "Risks are listed"
+        ]
+      },
+      "right": {
+        "title": "Outcome focus",
+        "bullets": [
+          "Readiness is validated",
+          "Owners are accountable",
+          "Executives can decide",
+          "Risks are resolved"
+        ]
+      }
+    },
+    {
+      "type": "process",
+      "headline": "How I would operate as 2IC",
+      "subheadline": "Translate strategy into controlled delivery momentum.",
+      "cards": [
+        {
+          "title": "1. Align",
+          "body": "Clarify priorities, decision rights, milestones, and escalation paths."
+        },
+        {
+          "title": "2. Orchestrate",
+          "body": "Coordinate stakeholders across ANZ, Suncorp Bank, vendors, and partners."
+        },
+        {
+          "title": "3. Govern",
+          "body": "Maintain risk visibility, dependency control, and executive-ready reporting."
+        },
+        {
+          "title": "4. Execute",
+          "body": "Drive readiness closure through runbooks, ownership, and hypercare planning."
+        }
+      ]
+    },
+    {
+      "type": "content",
+      "headline": "Knowledge I bring",
+      "subheadline": "A strong base in regulated transformation and integration delivery.",
       "bullets": [
-        "Compare baseline and physics-informed rankers.",
-        "Refine explicit physics residuals.",
-        "Scale across labelled topologies.",
-        "Stress test noise and partial observability."
+        "Large-scale banking transformation",
+        "Operational and technology readiness",
+        "Program governance and risk management",
+        "Cutover planning and hypercare",
+        "Core platform transition impacts"
+      ]
+    },
+    {
+      "type": "content",
+      "headline": "Skills I bring",
+      "subheadline": "Leadership habits suited to a complex readiness workstream.",
+      "bullets": [
+        "Acting as trusted 2IC",
+        "Translating strategy into delivery plans",
+        "Influencing executives and vendors",
+        "Managing risks, issues, and dependencies",
+        "Preparing decision-ready executive material",
+        "Aligning capacity and workforce models"
+      ]
+    },
+    {
+      "type": "cards",
+      "headline": "Development areas and support needed",
+      "subheadline": "Where I would ramp up quickly to maximise impact.",
+      "cards": [
+        {
+          "title": "Program specifics",
+          "body": "Deepen understanding of Target is Ready design and integration points."
+        },
+        {
+          "title": "Delivery rhythm",
+          "body": "Align early to tools, reporting templates, forums, and cadence."
+        },
+        {
+          "title": "Leadership alignment",
+          "body": "Establish clear priorities with the Value Stream Lead."
+        },
+        {
+          "title": "Stakeholder access",
+          "body": "Build relationships across critical cross-stream dependencies."
+        }
+      ]
+    },
+    {
+      "type": "closing",
+      "headline": "Why this role fits",
+      "subheadline": "It sits at the intersection of leadership, delivery, and enterprise impact.",
+      "bullets": [
+        "Operate at scale",
+        "Deliver meaningful transformation",
+        "Lead through complexity",
+        "Support confident executive decisions",
+        "Create safe, successful cutover outcomes"
       ],
-      "cta": "Next: improve physics residuals and robustness testing",
-      "note": "Close with direction: voltage-drop consistency, current smoothness, and radial monotonicity."
+      "cta": "Ready to help deliver Target is Ready"
     }
   ]
 }

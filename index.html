@@ -3,45 +3,45 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>FlowPitch Presentation Editor</title>
+  <title>FlowPitch Editable Web Deck</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div id="app" class="app-shell">
-    <header class="topbar" id="topbar">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true"></span>
+    <header id="topbar" class="topbar">
+      <div class="brand" aria-label="Deck title">
+        <span class="brand-mark"></span>
         <div>
-          <div class="brand-kicker">FlowPitch Editor</div>
-          <h1 id="deckTitle">Loading deck…</h1>
+          <strong id="deckTitle">FlowPitch Deck</strong>
+          <span>Editable web presentation</span>
         </div>
       </div>
-      <nav class="toolbar" aria-label="Deck controls">
-        <button id="presentBtn" type="button" class="primary">Present</button>
+      <nav class="toolbar-actions" aria-label="Deck actions">
+        <button id="presentBtn" type="button">Present</button>
         <button id="exportPdfBtn" type="button">Export PDF</button>
         <button id="downloadJsonBtn" type="button">Download JSON</button>
-        <button id="resetDeckBtn" type="button">Reset Deck</button>
+        <button id="resetDeckBtn" type="button" class="secondary">Reset Deck</button>
       </nav>
     </header>
 
     <main class="editor-layout" id="editorLayout">
       <aside class="thumb-rail" aria-label="Slide thumbnails">
         <div class="rail-actions">
-          <button id="addSlideBtn" type="button">Add</button>
-          <button id="duplicateSlideBtn" type="button">Duplicate</button>
-          <button id="deleteSlideBtn" type="button">Delete</button>
-          <button id="moveUpBtn" type="button" aria-label="Move slide up">↑</button>
-          <button id="moveDownBtn" type="button" aria-label="Move slide down">↓</button>
+          <button id="addSlideBtn" type="button" aria-label="Add slide">Add</button>
+          <button id="duplicateSlideBtn" type="button" aria-label="Duplicate selected slide">Duplicate</button>
+          <button id="deleteSlideBtn" type="button" aria-label="Delete selected slide">Delete</button>
+          <button id="moveUpBtn" type="button" aria-label="Move slide up">Up</button>
+          <button id="moveDownBtn" type="button" aria-label="Move slide down">Down</button>
         </div>
-        <div id="thumbs" class="thumbs"></div>
+        <div id="thumbList" class="thumb-list"></div>
       </aside>
 
       <section class="canvas-wrap" aria-label="Editable slide canvas">
-        <div id="editorSlide" class="editor-slide"></div>
+        <div id="loadWarning" class="load-warning" hidden></div>
+        <div id="slideCanvas" class="slide-canvas edit-canvas"></div>
       </section>
 
       <aside class="inspector" aria-label="Slide inspector">
-        <h2>Slide settings</h2>
         <label for="slideTypeSelect">Slide type</label>
         <select id="slideTypeSelect">
           <option value="title">Title</option>
@@ -52,33 +52,24 @@
           <option value="proof">Proof</option>
           <option value="process">Process</option>
           <option value="cards">Cards</option>
-          <option value="visual">Visual</option>
-        </select>
-        <label for="accentSelect">Accent</label>
-        <select id="accentSelect">
-          <option value="#1f6feb">Academic Blue</option>
-          <option value="#7c3aed">Violet</option>
-          <option value="#0891b2">Cyan</option>
-          <option value="#16a34a">Green</option>
-          <option value="#ea580c">Orange</option>
         </select>
         <label for="speakerNote">Speaker note</label>
-        <textarea id="speakerNote" rows="8" placeholder="Speaker notes…"></textarea>
-        <p id="storageWarning" class="storage-warning" hidden>Edits are working in memory only because localStorage is unavailable.</p>
+        <textarea id="speakerNote" rows="7" placeholder="Add private speaker notes..."></textarea>
+        <p class="hint">Edit slide copy directly on the canvas. Changes autosave in this browser.</p>
       </aside>
     </main>
 
-    <section id="presenter" class="presenter" aria-label="Presentation mode" aria-hidden="true">
-      <div class="present-bg" aria-hidden="true"><span></span><span></span><span></span></div>
+    <section id="presenter" class="presenter" aria-label="Presentation mode" hidden>
       <div id="presentStage" class="present-stage"></div>
-      <div class="present-progress"><span id="progressFill"></span></div>
-      <div id="presentDots" class="present-dots"></div>
-      <button id="prevBtn" type="button" class="present-nav prev" aria-label="Previous slide">‹</button>
-      <button id="nextBtn" type="button" class="present-nav next" aria-label="Next slide">›</button>
-      <div id="slideCounter" class="slide-counter">1 / 1</div>
-      <button id="exitPresentBtn" type="button" class="exit-present">Exit</button>
+      <div class="present-controls">
+        <button id="prevPresentBtn" type="button">Prev</button>
+        <span id="slideCounter">1 / 1</span>
+        <button id="nextPresentBtn" type="button">Next</button>
+      </div>
+      <div id="progressDots" class="progress-dots" aria-hidden="true"></div>
     </section>
   </div>
+
   <script src="app.js"></script>
 </body>
 </html>
